@@ -1,0 +1,7 @@
+{
+  "name": "Sabor & Cia - Lanchonete Profissional",
+  "description": "Um aplicativo de lanchonete moderno e inteligente com assistente IA para pedidos personalizados e menu interativo.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
