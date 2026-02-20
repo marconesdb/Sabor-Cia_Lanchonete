@@ -1,54 +1,37 @@
 import React, { useState } from 'react';
-import { MenuItem, Category, CartItem } from './types';
-import { MENU_ITEMS, CATEGORIES } from './constants';
-import { MenuCard } from './components/MenuCard';
-import { CartDrawer } from './components/CartDrawer';
-// import { ChefAssistant } from './components/ChefAssistant'; // <- REMOVA ESTA LINHA
-import { ShoppingCart, UtensilsCrossed, Search, MapPin, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Category } from '../types';
+import { MENU_ITEMS, CATEGORIES } from '../constants';
+import { MenuCard }    from '../components/MenuCard';
+import { CartDrawer }  from '../components/CartDrawer';
+import { useCart }     from '../context/CartContext';
+import { useAuth }     from '../context/AuthContext';
+import { ShoppingCart, UtensilsCrossed, Search, MapPin, Phone, User, LogOut } from 'lucide-react';
 
-const App: React.FC = () => {
+export const MenuPage: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<Category | 'Todos'>('Todos');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isCartOpen, setIsCartOpen]         = useState(false);
+  const [searchQuery, setSearchQuery]       = useState('');
+
+  const { cart, addToCart, updateQuantity, removeFromCart, clearCart, cartCount } = useCart();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const filteredItems = MENU_ITEMS.filter(item => {
     const matchesCategory = activeCategory === 'Todos' || item.category === activeCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch   = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  const addToCart = (item: MenuItem) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(i => 
-      i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i
-    ));
-  };
-
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(i => i.id !== id));
-  };
-
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
   const handleCheckout = () => {
-    alert("Pedido enviado para a cozinha! Em breve você receberá atualizações via WhatsApp.");
-    setCart([]);
     setIsCartOpen(false);
+    navigate(user ? '/checkout' : '/login');
   };
 
   return (
     <div className="min-h-screen pb-20">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -58,7 +41,7 @@ const App: React.FC = () => {
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">Sabor & Cia</h1>
               <div className="flex items-center gap-2 text-xs text-green-600 font-medium">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Aberto agora
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" /> Aberto agora
               </div>
             </div>
           </div>
@@ -66,18 +49,32 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2 md:gap-4">
             <div className="hidden md:flex items-center bg-gray-100 rounded-2xl px-4 py-2 w-64">
               <Search size={18} className="text-gray-400 mr-2" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="O que vamos comer?"
                 className="bg-transparent border-none outline-none text-sm w-full"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
-            <button 
-              onClick={() => setIsCartOpen(true)}
-              className="relative bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-colors"
-            >
+
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="hidden md:block text-sm font-medium text-gray-700">Olá, {user.name}</span>
+                <button onClick={logout} title="Sair"
+                  className="bg-gray-100 hover:bg-gray-200 p-2.5 rounded-2xl transition-colors">
+                  <LogOut size={20} className="text-gray-600" />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => navigate('/login')}
+                className="hidden md:flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-2xl text-sm font-medium text-gray-700 transition-colors">
+                <User size={16} /> Entrar
+              </button>
+            )}
+
+            <button onClick={() => setIsCartOpen(true)}
+              className="relative bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-colors">
               <ShoppingCart size={24} className="text-gray-700" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
@@ -89,53 +86,43 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* ── Main ── */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+
         {/* Banner */}
         <div className="mb-10 relative h-64 rounded-3xl overflow-hidden shadow-xl">
-          <img 
-            src="https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80" 
-            alt="Promo Banner" 
+          <img
+            src="https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80"
+            alt="Promo Banner"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex flex-col justify-center px-8 md:px-12 text-white">
             <span className="bg-orange-600 w-fit px-3 py-1 rounded-full text-xs font-bold mb-4">OFERTA DO DIA</span>
             <h2 className="text-3xl md:text-5xl font-bold mb-2">Combo Prime Bacon</h2>
-            <p className="text-gray-200 mb-6 text-lg max-w-md">Burger + Batata M + Bebida por apenas <span className="text-orange-400 font-bold">R$ 45,90</span></p>
+            <p className="text-gray-200 mb-6 text-lg max-w-md">
+              Burger + Batata M + Bebida por apenas <span className="text-orange-400 font-bold">R$ 45,90</span>
+            </p>
             <button className="bg-white text-gray-900 w-fit px-8 py-3 rounded-2xl font-bold hover:bg-orange-50 transition-colors shadow-lg shadow-black/20">
               Aproveitar agora
             </button>
           </div>
         </div>
 
-        {/* Categories Scroller */}
-        <div className="flex items-center gap-3 overflow-x-auto pb-6 mb-8 custom-scrollbar no-scrollbar">
-          <button 
-            onClick={() => setActiveCategory('Todos')}
-            className={`px-6 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all ${
-              activeCategory === 'Todos' 
-                ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' 
-                : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'
-            }`}
-          >
+        {/* Categorias */}
+        <div className="flex items-center gap-3 overflow-x-auto pb-6 mb-8 no-scrollbar">
+          <button onClick={() => setActiveCategory('Todos')}
+            className={`px-6 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all ${activeCategory === 'Todos' ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
             Todos
           </button>
           {CATEGORIES.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-6 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all ${
-                activeCategory === cat 
-                  ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' 
-                  : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'
-              }`}
-            >
+            <button key={cat} onClick={() => setActiveCategory(cat)}
+              className={`px-6 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all ${activeCategory === cat ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-100'}`}>
               {cat}
             </button>
           ))}
         </div>
 
-        {/* Menu Grid */}
+        {/* Grid de produtos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredItems.map(item => (
             <MenuCard key={item.id} item={item} onAddToCart={addToCart} />
@@ -143,13 +130,16 @@ const App: React.FC = () => {
           {filteredItems.length === 0 && (
             <div className="col-span-full py-20 text-center text-gray-500">
               <p className="text-lg">Não encontramos nenhum item com esse nome :(</p>
-              <button onClick={() => {setSearchQuery(''); setActiveCategory('Todos')}} className="mt-4 text-orange-600 font-bold underline">Mostrar todo o menu</button>
+              <button onClick={() => { setSearchQuery(''); setActiveCategory('Todos'); }}
+                className="mt-4 text-orange-600 font-bold underline">
+                Mostrar todo o menu
+              </button>
             </div>
           )}
         </div>
       </main>
 
-      {/* Footer Info */}
+      {/* ── Footer ── */}
       <footer className="bg-white border-t border-gray-100 pt-12 pb-24 md:pb-12 mt-12">
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-10">
           <div>
@@ -179,10 +169,9 @@ const App: React.FC = () => {
         </div>
       </footer>
 
-      {/* Components */}
-      {/* <ChefAssistant />  <- REMOVA ESTA LINHA */}
-      <CartDrawer 
-        isOpen={isCartOpen} 
+      {/* ── Cart Drawer ── */}
+      <CartDrawer
+        isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         items={cart}
         onUpdateQuantity={updateQuantity}
@@ -190,17 +179,7 @@ const App: React.FC = () => {
         onCheckout={handleCheckout}
       />
 
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
     </div>
   );
 };
-
-export default App;
