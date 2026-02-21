@@ -7,11 +7,19 @@ const stripe   = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET  = process.env.JWT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://sabor-cia-lanchonete.vercel.app',
+    'https://sabor-cia-lanchonete-94tqghl2h-marconesbs-projects.vercel.app',
+  ],
+  credentials: true,
+}));
 
 // ── Conexão MySQL ──
 const pool = mysql.createPool({
@@ -150,7 +158,6 @@ app.get('/api/produtos/:id', async (req, res) => {
 // USUÁRIOS
 // ────────────────────────────────────────────
 
-// Login usuário
 app.post('/api/usuarios/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -172,7 +179,6 @@ app.post('/api/usuarios/login', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Cadastrar usuário
 app.post('/api/usuarios', async (req, res) => {
   try {
     const { nome, email, senha, telefone } = req.body;
@@ -191,7 +197,6 @@ app.post('/api/usuarios', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Buscar usuário por ID
 app.get('/api/usuarios/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -203,34 +208,28 @@ app.get('/api/usuarios/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Recuperar senha — envia token (adicione envio de e-mail real aqui)
 app.post('/api/usuarios/recuperar-senha', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'E-mail obrigatório.' });
 
     const [rows] = await pool.query('SELECT id, nome FROM usuarios WHERE email = ?', [email]);
-
-    // Sempre retorna 200 por segurança (não revela se o e-mail existe)
     if (!rows.length) return res.json({ ok: true });
 
     const usuario = rows[0];
-
-    // Gera token temporário (válido por 1h)
     const token = jwt.sign(
       { id: usuario.id, email, tipo: 'recuperacao' },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    // Salva o token no banco
     await pool.query(
       'UPDATE usuarios SET reset_token = ?, reset_token_exp = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?',
       [token, usuario.id]
     );
 
     // TODO: substituir pelo envio real de e-mail (ex: Nodemailer / Resend)
-    // Link para o usuário: http://localhost:3000/resetar-senha?token=${token}
+    // Link: ${FRONTEND_URL}/resetar-senha?token=${token}
     console.log(`🔑 Token de recuperação para ${email}: ${token}`);
 
     res.json({ ok: true });
@@ -239,14 +238,12 @@ app.post('/api/usuarios/recuperar-senha', async (req, res) => {
   }
 });
 
-// Resetar senha com token
 app.post('/api/usuarios/resetar-senha', async (req, res) => {
   try {
     const { token, novaSenha } = req.body;
     if (!token || !novaSenha) return res.status(400).json({ error: 'Token e nova senha obrigatórios.' });
     if (novaSenha.length < 6) return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
 
-    // Verifica o token JWT
     let payload;
     try {
       payload = jwt.verify(token, JWT_SECRET);
@@ -256,7 +253,6 @@ app.post('/api/usuarios/resetar-senha', async (req, res) => {
 
     if (payload.tipo !== 'recuperacao') return res.status(400).json({ error: 'Token inválido.' });
 
-    // Verifica se o token ainda está salvo no banco (não foi usado)
     const [rows] = await pool.query(
       'SELECT id FROM usuarios WHERE id = ? AND reset_token = ? AND reset_token_exp > NOW()',
       [payload.id, token]
@@ -320,15 +316,11 @@ app.post('/api/pedidos', async (req, res) => {
 
     let endereco_id = null;
     if (endereco && endereco.rua) {
-      console.log('📍 Salvando endereço:', endereco);
       const [endRes] = await conn.query(
         'INSERT INTO enderecos (usuario_id, rua, numero, complemento, bairro, cidade, estado, cep, principal) VALUES (?,?,?,?,?,?,?,?,?)',
         [usuario_id || null, endereco.rua, endereco.numero, endereco.complemento || null, endereco.bairro, endereco.cidade, endereco.estado, endereco.cep, false]
       );
       endereco_id = endRes.insertId;
-      console.log('✅ Endereço salvo com id:', endereco_id);
-    } else {
-      console.warn('⚠️ Endereço não recebido ou incompleto:', endereco);
     }
 
     const [pedido] = await conn.query(
@@ -404,8 +396,6 @@ app.get('/api/pedidos/usuario/:id', async (req, res) => {
 
 app.post('/api/payment', async (req, res) => {
   try {
-    console.log('📦 Dados recebidos em /api/payment:', JSON.stringify(req.body, null, 2));
-
     const { token, transaction_amount, payer, pedido_id } = req.body;
     if (!token) return res.status(400).json({ error: 'Token do cartão não recebido.' });
 
@@ -414,7 +404,7 @@ app.post('/api/payment', async (req, res) => {
       currency:            'brl',
       payment_method_data: { type: 'card', card: { token } },
       confirm:             true,
-      return_url:          'http://localhost:3000/confirmation',
+      return_url:          `${FRONTEND_URL}/confirmation`, // ✅ usa variável de ambiente
       receipt_email:       payer?.email,
       description:         'Pedido Sabor & Cia',
     });
