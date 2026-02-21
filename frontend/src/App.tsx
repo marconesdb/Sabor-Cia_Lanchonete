@@ -7,6 +7,7 @@ import { CheckoutPage }    from './pages/CheckoutPage';
 import { PaymentPage }     from './pages/PaymentPage';
 import { ConfirmationPage } from './pages/ConfirmationPage';
 import { ProtectedRoute }  from './components/ProtectedRoute';
+import { AdminPanel } from './pages/AdminPanel';
 
 const App: React.FC = () => (
   <Routes>
@@ -16,6 +17,7 @@ const App: React.FC = () => (
     <Route path="/checkout"     element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
     <Route path="/payment"      element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
     <Route path="/confirmation" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
+    <Route path="/admin"        element={<AdminPanel />} />
     <Route path="*"             element={<Navigate to="/" replace />} />
   </Routes>
 );

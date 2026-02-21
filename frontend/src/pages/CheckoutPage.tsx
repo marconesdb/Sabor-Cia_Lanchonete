@@ -1,18 +1,68 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { MapPin, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const STEPS = ['Login', 'Endereço', 'Pagamento', 'Confirmação'];
+const BACKEND_URL = 'http://localhost:3001';
 
 export const CheckoutPage: React.FC = () => {
   const { cart, total } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [addr, setAddr] = useState({ street: '', number: '', complement: '', neighborhood: '', city: '' });
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const [addr, setAddr] = useState({
+    street: '', number: '', complement: '',
+    neighborhood: '', city: '', state: '', cep: '',
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/payment');
+    setLoading(true);
+    setError('');
+
+    try {
+      // 1. Criar pedido + endereço no banco
+      const resPedido = await fetch(`${BACKEND_URL}/api/pedidos`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id: user?.id || null,
+          metodo_pag: 'cartao',
+          total,
+          endereco: {
+            rua:         addr.street,
+            numero:      addr.number,
+            complemento: addr.complement,
+            bairro:      addr.neighborhood,
+            cidade:      addr.city,
+            estado:      addr.state,
+            cep:         addr.cep,
+          },
+          itens: cart.map(item => ({
+            id:       item.id,
+            name:     item.name,
+            price:    item.price,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const pedido = await resPedido.json();
+      if (!pedido.id) throw new Error('Erro ao criar pedido.');
+
+      // 2. Salvar pedido_id e endereço no sessionStorage para usar no pagamento
+      sessionStorage.setItem('pedido_id', pedido.id);
+      sessionStorage.setItem('endereco',  JSON.stringify(addr));
+
+      navigate('/payment');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao processar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -68,21 +118,44 @@ export const CheckoutPage: React.FC = () => {
                     className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
-                <input required value={addr.neighborhood} onChange={e => setAddr({ ...addr, neighborhood: e.target.value })}
-                  placeholder="Ex: Bela Vista"
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+                  <input required value={addr.neighborhood} onChange={e => setAddr({ ...addr, neighborhood: e.target.value })}
+                    placeholder="Ex: Bela Vista"
+                    className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                  <input required value={addr.cep} onChange={e => setAddr({ ...addr, cep: e.target.value })}
+                    placeholder="Ex: 01310-100"
+                    className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
-                <input required value={addr.city} onChange={e => setAddr({ ...addr, city: e.target.value })}
-                  placeholder="Ex: São Paulo"
-                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                  <input required value={addr.city} onChange={e => setAddr({ ...addr, city: e.target.value })}
+                    placeholder="Ex: São Paulo"
+                    className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                  <input required value={addr.state} onChange={e => setAddr({ ...addr, state: e.target.value })}
+                    placeholder="Ex: SP" maxLength={2}
+                    className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
               </div>
-              <button type="submit"
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-200 active:scale-95">
-                Ir para pagamento <ArrowRight size={20} />
+
+              {error && (
+                <p className="bg-red-50 text-red-600 border border-red-100 p-3 rounded-2xl text-sm text-center">
+                  {error}
+                </p>
+              )}
+
+              <button type="submit" disabled={loading}
+                className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-200 active:scale-95">
+                {loading ? 'Aguarde...' : <> Ir para pagamento <ArrowRight size={20} /> </>}
               </button>
             </form>
           </div>
