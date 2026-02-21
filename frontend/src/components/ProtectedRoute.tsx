@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 interface Props {
@@ -7,6 +7,16 @@ interface Props {
 }
 
 export const ProtectedRoute: React.FC<Props> = ({ children }) => {
-  const { user } = useAuth();
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  // Aguarda a sessão ser restaurada do localStorage antes de redirecionar
+  if (loading) return null;
+
+  if (!user) {
+    // Passa a rota atual como destino após o login
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return <>{children}</>;
 };
