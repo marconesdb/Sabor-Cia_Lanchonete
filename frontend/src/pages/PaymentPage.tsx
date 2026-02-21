@@ -5,7 +5,6 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { useCart } from '../context/CartContext';
 import { CreditCard, QrCode, Banknote, ArrowLeft } from 'lucide-react';
 
-// 🔑 Publishable Key do Stripe — pode ficar aqui (é pública)
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51T31y0POzCGlO8TZqkx0tEoXVVXQDjfkWkgbDttvHz26ff1kTFcqpy6aQKv9wlPz3E8Asqpsq3d1ruoRlZTY87fH00txouizcC');
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -15,9 +14,9 @@ const STEPS = ['Login', 'Endereço', 'Pagamento', 'Confirmação'];
 
 // ── Formulário de cartão com Stripe ──
 const CardForm: React.FC<{ total: number }> = ({ total }) => {
-  const stripe     = useStripe();
-  const elements   = useElements();
-  const navigate   = useNavigate();
+  const stripe       = useStripe();
+  const elements     = useElements();
+  const navigate     = useNavigate();
   const { clearCart } = useCart() as any;
   const [email,   setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,7 +52,8 @@ const CardForm: React.FC<{ total: number }> = ({ total }) => {
 
       if (data.status === 'approved') {
         clearCart();
-        navigate('/confirmation');
+        // ✅ Passa pedido_id na URL para evitar perda do sessionStorage
+        navigate(`/confirmation?pedido_id=${pedido_id}`);
       } else {
         setError('Pagamento recusado. Verifique os dados e tente novamente.');
       }
@@ -68,16 +68,10 @@ const CardForm: React.FC<{ total: number }> = ({ total }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={e => setEmail(e.target.value)}
+        <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
           placeholder="seu@email.com"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-        />
+          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
       </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Dados do cartão</label>
         <div className="border border-gray-300 rounded-xl px-4 py-3">
@@ -89,18 +83,13 @@ const CardForm: React.FC<{ total: number }> = ({ total }) => {
           }} />
         </div>
       </div>
-
       {error && (
         <p className="bg-red-50 text-red-600 border border-red-100 p-3 rounded-2xl text-sm text-center">
           {error}
         </p>
       )}
-
-      <button
-        type="submit"
-        disabled={loading || !stripe}
-        className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-lg shadow-orange-200 active:scale-95"
-      >
+      <button type="submit" disabled={loading || !stripe}
+        className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white py-4 rounded-2xl font-bold text-lg transition-all shadow-lg shadow-orange-200 active:scale-95">
         {loading ? 'Processando...' : `Pagar R$ ${total.toFixed(2)}`}
       </button>
     </form>
@@ -116,9 +105,11 @@ export const PaymentPage: React.FC = () => {
 
   const handleSimplePay = async () => {
     setLoading(true);
+    const pedido_id = sessionStorage.getItem('pedido_id');
     await new Promise(r => setTimeout(r, 1000));
     clearCart();
-    navigate('/confirmation');
+    // ✅ Passa pedido_id na URL também para PIX e dinheiro
+    navigate(`/confirmation?pedido_id=${pedido_id}`);
   };
 
   const methods = [
@@ -161,7 +152,6 @@ export const PaymentPage: React.FC = () => {
               <CreditCard className="text-orange-600" /> Forma de pagamento
             </h2>
 
-            {/* Seletor de método */}
             <div className="space-y-3 mb-6">
               {methods.map(({ id, label, icon: Icon }) => (
                 <button key={id} type="button" onClick={() => setMethod(id)}
@@ -176,14 +166,12 @@ export const PaymentPage: React.FC = () => {
               ))}
             </div>
 
-            {/* ── CARTÃO: Stripe ── */}
             {method === 'card' && (
               <Elements stripe={stripePromise}>
                 <CardForm total={total} />
               </Elements>
             )}
 
-            {/* ── PIX ── */}
             {method === 'pix' && (
               <div className="space-y-4">
                 <div className="bg-gray-50 rounded-2xl p-8 text-center border border-gray-100">
@@ -205,7 +193,6 @@ export const PaymentPage: React.FC = () => {
               </div>
             )}
 
-            {/* ── DINHEIRO ── */}
             {method === 'cash' && (
               <div className="space-y-4">
                 <div className="bg-orange-50 rounded-2xl p-6 text-center border border-orange-100">

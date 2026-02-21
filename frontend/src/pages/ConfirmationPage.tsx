@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, MapPin, CreditCard, Clock, ShoppingBag, Home, Printer } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface Item {
   nome:       string;
@@ -40,7 +40,9 @@ export const ConfirmationPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const pedido_id = sessionStorage.getItem('pedido_id');
+    // Tenta pegar pedido_id da URL primeiro, depois do sessionStorage
+    const params    = new URLSearchParams(window.location.search);
+    const pedido_id = params.get('pedido_id') || sessionStorage.getItem('pedido_id');
     if (!pedido_id) { navigate('/'); return; }
 
     fetch(`${BACKEND_URL}/api/pedidos/${pedido_id}`)
