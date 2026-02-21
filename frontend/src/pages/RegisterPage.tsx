@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UtensilsCrossed, Eye, EyeOff } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
   const navigate     = useNavigate();
+  const location     = useLocation();                             // ← NOVO
+
+  // Se veio do fluxo de compra, redireciona pro checkout; senão vai pra home
+  const redirectTo = (location.state as any)?.from || '/';       // ← NOVO
+
   const [name,      setName]      = useState('');
   const [email,     setEmail]     = useState('');
   const [telefone,  setTelefone]  = useState('');
@@ -32,9 +37,8 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       await register(name, email, password, telefone);
-      navigate('/checkout');
+      navigate(redirectTo);                                       // ← CORRIGIDO
     } catch (err: any) {
-      // Mensagem amigável para email duplicado
       if (err.message?.toLowerCase().includes('já cadastrado') ||
           err.message?.toLowerCase().includes('email já')) {
         setError('Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.');
@@ -63,7 +67,12 @@ export const RegisterPage: React.FC = () => {
             {error}
             {error.includes('já está cadastrado') && (
               <div className="mt-2">
-                <Link to="/login" className="text-orange-600 font-bold hover:underline">
+                {/* Preserva o state para que o login também saiba redirecionar corretamente */}
+                <Link
+                  to="/login"
+                  state={{ from: redirectTo }}
+                  className="text-orange-600 font-bold hover:underline"
+                >
                   Clique aqui para fazer login →
                 </Link>
               </div>
@@ -129,7 +138,10 @@ export const RegisterPage: React.FC = () => {
 
         <p className="text-center text-gray-500 text-sm mt-6">
           Já tem conta?{' '}
-          <Link to="/login" className="text-orange-600 font-bold hover:underline">Entrar</Link>
+          {/* Preserva o state para o login também redirecionar corretamente */}
+          <Link to="/login" state={{ from: redirectTo }} className="text-orange-600 font-bold hover:underline">
+            Entrar
+          </Link>
         </p>
         <p className="text-center mt-3">
           <Link to="/" className="text-gray-400 text-xs hover:underline">← Voltar ao menu</Link>

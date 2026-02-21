@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Category } from '../types';
 import { MENU_ITEMS, CATEGORIES } from '../constants';
-import { MenuCard }    from '../components/MenuCard';
-import { CartDrawer }  from '../components/CartDrawer';
-import { useCart }     from '../context/CartContext';
-import { useAuth }     from '../context/AuthContext';
+import { MenuCard }   from '../components/MenuCard';
+import { CartDrawer } from '../components/CartDrawer';
+import { useCart }    from '../context/CartContext';
+import { useAuth }    from '../context/AuthContext';
 import { ShoppingCart, UtensilsCrossed, Search, MapPin, Phone, User, LogOut } from 'lucide-react';
 
 export const MenuPage: React.FC = () => {
@@ -25,7 +25,12 @@ export const MenuPage: React.FC = () => {
 
   const handleCheckout = () => {
     setIsCartOpen(false);
-    navigate(user ? '/checkout' : '/login');
+    if (user) {
+      navigate('/checkout');
+    } else {
+      // Passa { from: '/checkout' } para o login saber para onde redirecionar após autenticar
+      navigate('/login', { state: { from: '/checkout' } });
+    }
   };
 
   return (

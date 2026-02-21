@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UtensilsCrossed, Eye, EyeOff } from 'lucide-react';
 
@@ -8,13 +8,17 @@ const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate  = useNavigate();
+  const location  = useLocation();                              // ← NOVO
+
+  // Se veio do carrinho (handleCheckout), redireciona pro checkout; senão vai pra home
+  const redirectTo = (location.state as any)?.from || '/';    // ← NOVO
+
   const [email,       setEmail]       = useState('');
   const [password,    setPassword]    = useState('');
   const [showPass,    setShowPass]    = useState(false);
   const [error,       setError]       = useState('');
   const [loading,     setLoading]     = useState(false);
 
-  // Recuperação de senha
   const [recovering,  setRecovering]  = useState(false);
   const [recEmail,    setRecEmail]    = useState('');
   const [recMsg,      setRecMsg]      = useState('');
@@ -26,7 +30,7 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/checkout');
+      navigate(redirectTo);                                     // ← CORRIGIDO
     } catch (err: any) {
       setError(err.message || 'E-mail ou senha inválidos.');
     } finally {
