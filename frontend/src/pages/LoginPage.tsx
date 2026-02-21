@@ -3,9 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UtensilsCrossed, Eye, EyeOff } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export const LoginPage = () => {
+export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate  = useNavigate();
   const [email,       setEmail]       = useState('');
@@ -20,20 +20,21 @@ export const LoginPage = () => {
   const [recMsg,      setRecMsg]      = useState('');
   const [recLoading,  setRecLoading]  = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
       await login(email, password);
       navigate('/checkout');
-    } catch (err) {
+    } catch (err: any) {
+      setError(err.message || 'E-mail ou senha inválidos.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRecover = async (e) => {
+  const handleRecover = async (e: React.FormEvent) => {
     e.preventDefault();
     setRecLoading(true);
     setRecMsg('');
@@ -44,7 +45,6 @@ export const LoginPage = () => {
         body:    JSON.stringify({ email: recEmail }),
       });
 
-      // Evita erro de JSON inválido caso o servidor retorne HTML
       const contentType = res.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
         throw new Error('Servidor indisponível. Tente novamente mais tarde.');

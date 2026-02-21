@@ -5,7 +5,7 @@ import {
   XCircle, Printer, LogOut, RefreshCw, ChevronDown
 } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pendente:    { label: 'Pendente',     color: 'bg-yellow-100 text-yellow-700' },

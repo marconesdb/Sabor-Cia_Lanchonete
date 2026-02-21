@@ -5,10 +5,10 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { useCart } from '../context/CartContext';
 import { CreditCard, QrCode, Banknote, ArrowLeft } from 'lucide-react';
 
-// 🔑 Publishable Key do Stripe
-const stripePromise = loadStripe('pk_test_51T31y0POzCGlO8TZqkx0tEoXVVXQDjfkWkgbDttvHz26ff1kTFcqpy6aQKv9wlPz3E8Asqpsq3d1ruoRlZTY87fH00txouizcC');
+// 🔑 Publishable Key do Stripe — pode ficar aqui (é pública)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51T31y0POzCGlO8TZqkx0tEoXVVXQDjfkWkgbDttvHz26ff1kTFcqpy6aQKv9wlPz3E8Asqpsq3d1ruoRlZTY87fH00txouizcC');
 
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 type PayMethod = 'card' | 'pix' | 'cash';
 const STEPS = ['Login', 'Endereço', 'Pagamento', 'Confirmação'];
@@ -33,7 +33,6 @@ const CardForm: React.FC<{ total: number }> = ({ total }) => {
       const cardElement = elements.getElement(CardElement) as any;
       if (!cardElement) throw new Error('Elemento de cartão não encontrado.');
 
-      // Cria token do cartão
       const { token, error: stripeError } = await stripe.createToken(cardElement);
       if (stripeError) throw new Error(stripeError.message);
 
